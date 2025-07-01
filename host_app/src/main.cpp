@@ -4,6 +4,9 @@
 #include <iostream>
 #include <cmath>
 #include <chrono>
+#include "MyCustomConvOpKernel.h"
+
+static MyCustomOp custom_op{"CPUExecutionProvider"}; 
 
 struct Box {
     float xmin, ymin, xmax, ymax;
@@ -120,15 +123,32 @@ int main() {
     const int input_width = 320;
     const int input_height = 240;
 
-    Ort::Env env(ORT_LOGGING_LEVEL_ERROR, "UltraLightFace");
+
+    Ort::Env* env = new Ort::Env(ORT_LOGGING_LEVEL_ERROR, "UltraLightFace");
     Ort::SessionOptions session_options;
+	
+	std::cout << "Iniciamos onnx" << std::endl;
+	
+
+    // Crear dominio personalizado y registrar el operador
+    Ort::CustomOpDomain custom_domain("com.yourcompany.fpga");
+	std::cout << "Se mete el customop" << std::endl;
+    custom_domain.Add(&custom_op);  // aquí se añade la instancia
+	std::cout << "se mete en las opciones" << std::endl;
+    session_options.Add(custom_domain);
+	
     session_options.SetIntraOpNumThreads(1);
-    Ort::Session session(env, "modelo.onnx", session_options);
+	std::cout << "cargamos modelo" << std::endl;
+    Ort::Session session(*env, "modelo.onnx", session_options);
+	
+	std::cout << "Creada session" << std::endl;
 
     const char* input_name = "input";
     const char* output_names[] = {"scores", "boxes"};
 
     std::vector<std::array<float,4>> priors = generate_priors(input_width, input_height);
+	
+	std::cout << "Generadas prior box" << std::endl;
 
     cv::VideoCapture cap(0);
     if (!cap.isOpened()) {
@@ -138,7 +158,7 @@ int main() {
 
     auto start = std::chrono::high_resolution_clock::now();
     int frame_count = 0;
-
+	std::cout << "Iniciamos capturas" << std::endl;
     while (true) {
         cv::Mat frame;
         cap >> frame;
@@ -153,6 +173,7 @@ int main() {
             std::vector<int64_t>{1, 3, input_height, input_width}.data(),
             4
         );
+		
         auto output_tensors = session.Run(Ort::RunOptions{nullptr}, 
                                           &input_name, &input_tensor, 1, 
                                           output_names, 2);                                

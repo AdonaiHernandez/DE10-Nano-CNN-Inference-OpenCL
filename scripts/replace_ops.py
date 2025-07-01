@@ -91,7 +91,7 @@ def replace_first_conv_with_custom_op(input_model_path, output_model_path, custo
 
     # Reconstruir el modelo
     new_model = helper.make_model(new_graph, producer_name=model.producer_name, opset_imports=model.opset_import)
-
+    new_model.ir_version = 8
     # Añadir o modificar la definición de opset_import para incluir tu dominio personalizado
     # Esto le dice a ONNX Runtime que hay un nuevo dominio de operador disponible
     found_custom_domain_opset = False
